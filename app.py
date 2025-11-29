@@ -211,8 +211,10 @@ elif page == "Add Problem":
                 st.error("Problem already exists or error adding.")
     
     st.markdown("---")
+    st.markdown("---")
     st.subheader("Bulk Import")
-    uploaded_file = st.file_uploader("Upload CSV (problem_id, title, difficulty, tags)", type="csv")
+    st.markdown("Upload CSV with columns: `problem_id`, `title`, `difficulty`, `tags`, `date` (optional, YYYY-MM-DD)")
+    uploaded_file = st.file_uploader("Upload CSV", type="csv")
     if uploaded_file is not None:
         if st.button("Import CSV"):
             try:
@@ -229,7 +231,15 @@ elif page == "Add Problem":
                     difficulty = row.get('difficulty', None)
                     tags = row.get('tags', None)
                     
-                    if db.add_problem(p_id, title, difficulty, tags, st.session_state.current_date):
+                    # Date handling
+                    date_added = st.session_state.current_date
+                    if 'date' in row and pd.notna(row['date']):
+                        try:
+                            date_added = datetime.datetime.strptime(str(row['date']), '%Y-%m-%d').date()
+                        except:
+                            pass # Fallback to current date
+                    
+                    if db.add_problem(p_id, title, difficulty, tags, date_added):
                         success_count += 1
                     else:
                         fail_count += 1
@@ -289,6 +299,27 @@ elif page == "All Problems":
     st.header("All Problems")
     df = db.get_all_problems_df()
     st.dataframe(df, use_container_width=True)
+    
+    st.markdown("---")
+    with st.expander("Danger Zone: Delete Problem"):
+        st.warning("This will permanently delete the problem, its revision schedule, and history.")
+        
+        if not df.empty:
+            # Create a list of "ID | Title" for the selectbox
+            problem_options = [f"{row['problem_id']} | {row['title']}" for _, row in df.iterrows()]
+            selected_option = st.selectbox("Select Problem to Delete", problem_options)
+            
+            if st.button("Delete Selected Problem", type="primary"):
+                # Extract problem_id
+                selected_id = selected_option.split(" | ")[0]
+                if db.delete_problem(selected_id):
+                    st.success(f"Deleted problem {selected_id}")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("Failed to delete problem.")
+        else:
+            st.info("No problems to delete.")
 
 elif page == "Analytics":
     st.header("Analytics")

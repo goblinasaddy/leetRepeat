@@ -234,3 +234,21 @@ def get_analytics_stats():
         'total_problems': total_problems,
         'total_solved': total_solved
     }
+
+def delete_problem(problem_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        # Delete from history
+        cursor.execute("DELETE FROM history WHERE problem_id=?", (problem_id,))
+        # Delete from revisions
+        cursor.execute("DELETE FROM revisions WHERE problem_id=?", (problem_id,))
+        # Delete from problems
+        cursor.execute("DELETE FROM problems WHERE problem_id=?", (problem_id,))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error deleting problem: {e}")
+        return False
+    finally:
+        conn.close()
