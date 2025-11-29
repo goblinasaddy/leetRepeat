@@ -301,6 +301,49 @@ elif page == "All Problems":
     st.dataframe(df, use_container_width=True)
     
     st.markdown("---")
+    
+    # Edit Problem Section
+    with st.expander("Edit Problem Details"):
+        if not df.empty:
+            # Select problem to edit
+            edit_options = [f"{row['problem_id']} | {row['title']}" for _, row in df.iterrows()]
+            edit_sel = st.selectbox("Select Problem to Edit", edit_options, key="edit_sel")
+            
+            # Get current data
+            edit_id = edit_sel.split(" | ")[0]
+            current_row = df[df['problem_id'] == edit_id].iloc[0]
+            
+            with st.form("edit_problem_form"):
+                new_title = st.text_input("Title", value=current_row['title'] if current_row['title'] else "")
+                new_difficulty = st.selectbox("Difficulty", ["Easy", "Medium", "Hard"], index=["Easy", "Medium", "Hard"].index(current_row['difficulty']) if current_row['difficulty'] in ["Easy", "Medium", "Hard"] else 1)
+                new_tags = st.text_input("Tags", value=current_row['tags'] if current_row['tags'] else "")
+                
+                # Date handling
+                curr_date_val = datetime.date.today()
+                if pd.notna(current_row['date_added']):
+                    try:
+                        curr_date_val = datetime.datetime.strptime(str(current_row['date_added']), '%Y-%m-%d').date()
+                    except:
+                        pass
+                
+                new_date = st.date_input("Date Added (Changing this resets schedule!)", value=curr_date_val)
+                
+                if st.form_submit_button("Update Problem"):
+                    update_data = {
+                        'title': new_title,
+                        'difficulty': new_difficulty,
+                        'tags': new_tags,
+                        'date_added': new_date
+                    }
+                    if db.update_problem(edit_id, update_data):
+                        st.success("Problem updated successfully!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("Failed to update problem.")
+        else:
+            st.info("No problems to edit.")
+
     with st.expander("Danger Zone: Delete Problem"):
         st.warning("This will permanently delete the problem, its revision schedule, and history.")
         
